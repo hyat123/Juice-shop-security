@@ -2,8 +2,7 @@ name: CI/CD Security Scan – OWASP Juice Shop (Trivy + ZAP + Nmap)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
 
 jobs:
@@ -14,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # PRE-DEPLOYMENT (TRIVY)
+      # -------- PRE-DEPLOYMENT (TRIVY) --------
       - name: Install Trivy
         run: |
           sudo apt-get update
@@ -35,21 +34,21 @@ jobs:
             trivy_fs_scan.txt
             trivy_image_scan.txt
 
-      # DEPLOY
+      # -------- DEPLOY --------
       - name: Start OWASP Juice Shop
         run: docker run -d -p 3000:3000 bkimminich/juice-shop
 
       - name: Wait for application
         run: sleep 15
 
-      # APPLICATION-LAYER (ZAP)
+      # -------- APPLICATION-LAYER (ZAP) --------
       - name: OWASP ZAP Baseline Scan (post-deployment)
         run: |
           docker run --rm \
             --network host \
             -v ${{ github.workspace }}:/zap/wrk \
-            owasp/zap2docker-stable:stable \
-            zap-baseline.py \
+            zaproxy/zap-stable \
+            /zap/zap-baseline.py \
             -t http://localhost:3000 \
             -r zap_report.html
 
@@ -59,7 +58,7 @@ jobs:
           name: zap-results
           path: zap_report.html
 
-      # NETWORK (NMAP)
+      # -------- NETWORK-LAYER (NMAP) --------
       - name: Install Nmap
         run: sudo apt-get update && sudo apt-get install -y nmap
 
