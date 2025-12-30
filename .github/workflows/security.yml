@@ -52,7 +52,7 @@ jobs:
       - name: Start OWASP Juice Shop
         run: docker run -d -p 3000:3000 bkimminich/juice-shop
 
-      # Give the app time to start
+      # Give the application time to start
       - name: Wait for application
         run: sleep 15
 
