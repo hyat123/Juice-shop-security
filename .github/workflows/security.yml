@@ -23,7 +23,8 @@ jobs:
       run: nmap --script vuln localhost -oN nmap_vuln_scan.txt
 
     - name: Upload Nmap results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: nmap-results
         path: nmap_vuln_scan.txt
+
