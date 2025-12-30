@@ -1,4 +1,4 @@
-name: CI/CD Security Scan – OWASP Juice Shop
+name: CI/CD Security Scan – OWASP Juice Shop (Trivy + Nmap)
 
 on:
   push:
@@ -10,18 +10,61 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # -------------------------
+    # Checkout repository
+    # -------------------------
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+
+    # -------------------------
+    # PRE-DEPLOYMENT SCANNING
+    # -------------------------
+
+    # Install Trivy
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.49.1_Linux-64bit.deb
+        sudo dpkg -i trivy_0.49.1_Linux-64bit.deb
+
+    # Trivy filesystem scan (source code)
+    - name: Trivy filesystem scan (pre-deployment)
+      run: trivy fs . --format table -o trivy_fs_scan.txt
+
+    # Trivy image scan (Juice Shop image)
+    - name: Trivy image scan (pre-deployment)
+      run: trivy image bkimminich/juice-shop --format table -o trivy_image_scan.txt
+
+    # Upload Trivy results
+    - name: Upload Trivy results
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-results
+        path: |
+          trivy_fs_scan.txt
+          trivy_image_scan.txt
+
+    # -------------------------
+    # DEPLOYMENT
+    # -------------------------
 
     - name: Start OWASP Juice Shop
       run: docker run -d -p 3000:3000 bkimminich/juice-shop
 
+    # -------------------------
+    # POST-DEPLOYMENT SCANNING
+    # -------------------------
+
+    # Install Nmap
     - name: Install Nmap
       run: sudo apt-get update && sudo apt-get install -y nmap
 
-    - name: Run Nmap vulnerability scan
+    # Nmap vulnerability scan
+    - name: Nmap vulnerability scan (post-deployment)
       run: nmap --script vuln localhost -oN nmap_vuln_scan.txt
 
+    # Upload Nmap results
     - name: Upload Nmap results
       uses: actions/upload-artifact@v4
       with:
