@@ -1,37 +1,47 @@
-# DevSecOps CI/CD Security Pipeline (OWASP Juice Shop)
+# CI/CD Security Pipeline – OWASP Juice Shop
 
-This project demonstrates a multi-layer DevSecOps CI/CD security pipeline using GitHub Actions.  
-It deploys OWASP Juice Shop in an ephemeral CI environment and runs automated security scans pre- and post-deployment.
+This repository demonstrates an automated CI/CD security pipeline using GitHub Actions.
+The pipeline integrates multiple security tools to scan an intentionally vulnerable
+application (OWASP Juice Shop) before and after deployment.
 
-## What this pipeline does
+## Pipeline Overview
 
-### Pre-deployment (Shift Left)
-- **Trivy filesystem scan**: scans the repository for vulnerable dependencies and issues.
-- **Trivy image scan**: scans the OWASP Juice Shop container image for CVEs.
+The workflow runs sequential security checks within a single CI job using an ephemeral
+deployment environment.
 
-### Deployment (Ephemeral Environment)
-- Starts **OWASP Juice Shop** as a Docker container on the GitHub Actions runner.
+### Pre-Deployment Security Scanning
+- **Trivy filesystem scan** – identifies vulnerable dependencies and insecure files.
+- **Trivy container image scan** – detects known CVEs in the Juice Shop Docker image.
 
-### Post-deployment (Runtime / DAST + Network)
-- **OWASP ZAP baseline scan**: application-layer dynamic security testing (safe baseline mode).
-- **Nmap scan**: network/service exposure and vulnerability scripting.
+### Deployment
+- OWASP Juice Shop is deployed as a Docker container on the CI runner.
+- The environment exists only for the duration of the pipeline run.
 
-## Outputs (Artifacts)
-Each workflow run uploads reports as GitHub Actions artifacts:
+### Post-Deployment Security Scanning
+- **OWASP ZAP baseline scan** – performs dynamic application-layer security testing.
+- **Nmap vulnerability scan** – identifies exposed services and common network issues.
+
+## Security Reports (Artifacts)
+
+Each pipeline execution produces downloadable artifacts:
 - `trivy_fs_scan.txt`
 - `trivy_image_scan.txt`
 - `zap_report.html`
 - `nmap_vuln_scan.txt`
 
-## Tech Stack
+These reports provide evidence of detected security warnings and misconfigurations.
+
+## Tools Used
 - GitHub Actions
 - Docker
 - OWASP Juice Shop
 - Trivy
-- OWASP ZAP (containerised baseline scan)
+- OWASP ZAP
 - Nmap
 
-## How to run locally (optional)
-1. Start Juice Shop:
-   ```bash
-   docker run -d -p 3000:3000 bkimminich/juice-shop
+## Purpose
+This project illustrates how security controls can be embedded into a CI/CD pipeline
+using automated, repeatable scanning stages. It reflects common DevSecOps practices
+used to identify security issues early and during runtime.
+
+> OWASP Juice Shop is intentionally vulnerable and used for educational purposes only.
