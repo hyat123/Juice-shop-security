@@ -1,4 +1,4 @@
-name: CI/CD Security Scan – OWASP Juice Shop
+name: CI/CD Security Scan – OWASP Juice Shop (Trivy + ZAP + Nmap)
 
 on:
   push:
@@ -10,73 +10,76 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # -------------------------
-    # Checkout
-    # -------------------------
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      # =========================
+      # CHECKOUT
+      # =========================
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # =========================
-    # PRE-DEPLOYMENT SCANNING
-    # =========================
+      # =========================
+      # PRE-DEPLOYMENT: TRIVY
+      # =========================
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
 
-    - name: Install Trivy
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y curl
-        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Trivy filesystem scan (pre-deployment)
+        run: trivy fs . --format table -o trivy_fs_scan.txt
 
-    - name: Trivy filesystem scan (pre-deployment)
-      run: trivy fs . --format table -o trivy_fs_scan.txt
+      - name: Trivy image scan (pre-deployment)
+        run: trivy image bkimminich/juice-shop --format table -o trivy_image_scan.txt
 
-    - name: Trivy image scan (pre-deployment)
-      run: trivy image bkimminich/juice-shop --format table -o trivy_image_scan.txt
+      - name: Upload Trivy results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: |
+            trivy_fs_scan.txt
+            trivy_image_scan.txt
 
-    - name: Upload Trivy results
-      uses: actions/upload-artifact@v4
-      with:
-        name: trivy-results
-        path: |
-          trivy_fs_scan.txt
-          trivy_image_scan.txt
+      # =========================
+      # DEPLOY: JUICE SHOP
+      # =========================
+      - name: Start OWASP Juice Shop
+        run: docker run -d -p 3000:3000 bkimminich/juice-shop
 
-    # =========================
-    # DEPLOYMENT
-    # =========================
+      - name: Wait for application
+        run: sleep 15
 
-    - name: Start OWASP Juice Shop
-      run: docker run -d -p 3000:3000 bkimminich/juice-shop
+      # =========================
+      # POST-DEPLOYMENT: OWASP ZAP (DAST)
+      # =========================
+      - name: OWASP ZAP Baseline Scan (post-deployment)
+        run: |
+          docker run --rm \
+            --user 0 \
+            --network host \
+            -v ${{ github.workspace }}:/zap/wrk \
+            zaproxy/zap-stable \
+            /zap/zap-baseline.py \
+            -t http://localhost:3000 \
+            -r zap_report.html \
+            -I
 
-    - name: Wait for application
-      run: sleep 15
+      - name: Upload ZAP results
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-results
+          path: zap_report.html
 
-    # =========================
-    # POST-DEPLOYMENT SCANNING
-    # =========================
+      # =========================
+      # POST-DEPLOYMENT: NMAP
+      # =========================
+      - name: Install Nmap
+        run: sudo apt-get update && sudo apt-get install -y nmap
 
-    - name: OWASP ZAP Baseline Scan
-      run: |
-        docker run --rm \
-          --user 0 \
-          --network host \
-          -v ${{ github.workspace }}:/zap/wrk \
-          zaproxy/zap-stable \
-          /zap/zap-baseline.py \
-          -t http://localhost:3000 \
-          -r zap_report.html \
-          -I
+      - name: Nmap vulnerability scan (post-deployment)
+        run: nmap --script vuln localhost -oN nmap_vuln_scan.txt
 
-    - name: Upload ZAP results
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap-results
-        path: zap_report.html
-
-    - name: Install Nmap
-      run: sudo apt-get update && sudo apt-get install -y nmap
-
-    - name: Nmap vulnerability scan
-      run: nmap --script vuln localhost -oN nmap_vuln_scan.txt
-
-    - name: Upload Nmap results
-      uses: actions/upload-artif
+      - name: Upload Nmap results
+        uses: actions/upload-artifact@v4
+        with:
+          name: nmap-results
+          path: nmap_vuln_scan.txt
