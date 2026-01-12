@@ -1,4 +1,4 @@
-name: CI/CD Security Scan – OWASP Juice Shop (Trivy + ZAP + Nmap)
+name: CI/CD Security Scan – OWASP Juice Shop
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
 
     steps:
     # -------------------------
-    # Checkout repository
+    # Checkout
     # -------------------------
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -54,8 +54,7 @@ jobs:
     # POST-DEPLOYMENT SCANNING
     # =========================
 
-    # --- OWASP ZAP (Application Layer) ---
-    - name: OWASP ZAP Baseline Scan (post-deployment)
+    - name: OWASP ZAP Baseline Scan
       run: |
         docker run --rm \
           --user 0 \
@@ -73,15 +72,11 @@ jobs:
         name: zap-results
         path: zap_report.html
 
-    # --- Nmap (Network Layer) ---
     - name: Install Nmap
       run: sudo apt-get update && sudo apt-get install -y nmap
 
-    - name: Nmap vulnerability scan (post-deployment)
+    - name: Nmap vulnerability scan
       run: nmap --script vuln localhost -oN nmap_vuln_scan.txt
 
     - name: Upload Nmap results
-      uses: actions/upload-artifact@v4
-      with:
-        name: nmap-results
-        path: nmap_vuln_scan.txt
+      uses: actions/upload-artif
